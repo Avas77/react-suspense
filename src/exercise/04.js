@@ -28,19 +28,36 @@ const SUSPENSE_CONFIG = {
   busyDelayMs: 300,
   busyMinDurationMs: 700,
 }
-
 // 🐨 create a pokemonResourceCache object
 
-// 🐨 create a getPokemonResource function which accepts a name checks the cache
-// for an existing resource. If there is none, then it creates a resource
-// and inserts it into the cache. Finally the function should return the
-// resource.
+const PokemonResourceContext = React.createContext()
+
+function PokemonResourceContextProvider({children}) {
+  const cache = React.useRef({})
+
+  const getPokemonResource = React.useCallback(name => {
+    let resource = cache.current[name]
+    if (!resource) {
+      resource = createPokemonResource(name)
+      cache.current[name] = resource
+    }
+    return resource
+  }, [])
+
+  return (
+    <PokemonResourceContext.Provider value={getPokemonResource}>
+      {children}
+    </PokemonResourceContext.Provider>
+  )
+}
 
 function createPokemonResource(pokemonName) {
   return createResource(fetchPokemon(pokemonName))
 }
 
 function App() {
+  const getPokemonResource = React.useContext(PokemonResourceContext)
+  console.log(getPokemonResource)
   const [pokemonName, setPokemonName] = React.useState('')
   const [startTransition, isPending] = React.useTransition(SUSPENSE_CONFIG)
   const [pokemonResource, setPokemonResource] = React.useState(null)
@@ -52,7 +69,7 @@ function App() {
     }
     startTransition(() => {
       // 🐨 change this to getPokemonResource instead
-      setPokemonResource(createPokemonResource(pokemonName))
+      setPokemonResource(getPokemonResource(pokemonName))
     })
   }, [pokemonName, startTransition])
 
@@ -65,26 +82,28 @@ function App() {
   }
 
   return (
-    <div className="pokemon-info-app">
-      <PokemonForm pokemonName={pokemonName} onSubmit={handleSubmit} />
-      <hr />
-      <div className={`pokemon-info ${isPending ? 'pokemon-loading' : ''}`}>
-        {pokemonResource ? (
-          <PokemonErrorBoundary
-            onReset={handleReset}
-            resetKeys={[pokemonResource]}
-          >
-            <React.Suspense
-              fallback={<PokemonInfoFallback name={pokemonName} />}
+    <PokemonResourceContextProvider>
+      <div className="pokemon-info-app">
+        <PokemonForm pokemonName={pokemonName} onSubmit={handleSubmit} />
+        <hr />
+        <div className={`pokemon-info ${isPending ? 'pokemon-loading' : ''}`}>
+          {pokemonResource ? (
+            <PokemonErrorBoundary
+              onReset={handleReset}
+              resetKeys={[pokemonResource]}
             >
-              <PokemonInfo pokemonResource={pokemonResource} />
-            </React.Suspense>
-          </PokemonErrorBoundary>
-        ) : (
-          'Submit a pokemon'
-        )}
+              <React.Suspense
+                fallback={<PokemonInfoFallback name={pokemonName} />}
+              >
+                <PokemonInfo pokemonResource={pokemonResource} />
+              </React.Suspense>
+            </PokemonErrorBoundary>
+          ) : (
+            'Submit a pokemon'
+          )}
+        </div>
       </div>
-    </div>
+    </PokemonResourceContextProvider>
   )
 }
 
