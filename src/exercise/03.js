@@ -10,6 +10,7 @@ import {
   PokemonErrorBoundary,
 } from '../pokemon'
 import {createResource} from '../utils'
+import {useTransition} from 'react'
 
 function PokemonInfo({pokemonResource}) {
   const pokemon = pokemonResource.read()
@@ -37,7 +38,7 @@ function createPokemonResource(pokemonName) {
   // delay = 450
 
   // shows busy indicator, then suspense fallback
-  // delay = 5000
+  delay = 5000
 
   // shows busy indicator for a split second
   // 💯 this is what the extra credit improves
@@ -47,7 +48,7 @@ function createPokemonResource(pokemonName) {
 
 function App() {
   const [pokemonName, setPokemonName] = React.useState('')
-  // 🐨 add a useTransition hook here
+  const [startTransition, isPending] = useTransition()
   const [pokemonResource, setPokemonResource] = React.useState(null)
 
   React.useEffect(() => {
@@ -55,8 +56,9 @@ function App() {
       setPokemonResource(null)
       return
     }
-    // 🐨 wrap this next line in a startTransition call
-    setPokemonResource(createPokemonResource(pokemonName))
+    startTransition(() => {
+      setPokemonResource(createPokemonResource(pokemonName))
+    })
     // 🐨 add startTransition to the deps list here
   }, [pokemonName])
 
@@ -76,7 +78,12 @@ function App() {
         🐨 add inline styles here to set the opacity to 0.6 if the
         useTransition above is pending
       */}
-      <div className="pokemon-info">
+      <div
+        className="pokemon-info"
+        style={{
+          opacity: isPending ? 0.6 : 1,
+        }}
+      >
         {pokemonResource ? (
           <PokemonErrorBoundary
             onReset={handleReset}
